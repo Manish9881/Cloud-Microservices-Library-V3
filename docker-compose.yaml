@@ -1,0 +1,93 @@
+version: '3.9'
+
+services:
+
+  database:
+    image: manish9881/postgres
+    container_name: database
+    networks:
+      - backend
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: manish9881/rabbitmq:3.13-rc-management
+    container_name: rabbitmq
+    networks:
+      - backend
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  userservice:
+    image: manish9881/exercise_three-userservice
+    build:
+      context: ./UserService
+    container_name: userservice
+    networks:
+      - backend
+    ports:
+      - "5002:5002"
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  bookservice:
+    image: manish9881/exercise_three-bookservice
+    build:
+      context: ./BookService
+    container_name: bookservice
+    networks:
+      - backend
+    ports:
+      - "5006:5006"
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  borrowservice:
+    image: manish9881/exercise_three-borrowservice
+    build:
+      context: ./BorrowService
+    container_name: borrowservice
+    networks:
+      - backend
+    ports:
+      - "5004:5004"
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+networks:
+  backend:
+
+volumes:
+  db_data:
